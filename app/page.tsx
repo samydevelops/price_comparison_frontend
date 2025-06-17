@@ -1,17 +1,62 @@
+'use client';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import Image from 'next/image'
+import axios from 'axios';
+
 export default function Home() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [results, setResults] = useState<{ amazon: any[]; flipkart: any[] }>({ amazon: [], flipkart: [] });
+  const [loading, setLoading] = useState(false);
+
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) return;
+    setLoading(true);
+    try {
+      const res = await axios.post('http://localhost:4000/scrape', {
+        keyword: searchTerm,
+      }, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      setResults({
+        amazon: res.data.amazon_data || [],
+        flipkart: res.data.flipkart_data || [],
+      });
+    } catch (error) {
+      console.error('Error making POST request:', error);
+      alert('Error occurred during POST request.');
+      setResults({ amazon: [], flipkart: [] });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // Optionally, clear results when searchTerm is cleared
+    if (!searchTerm) {
+      setResults({ amazon: [], flipkart: [] });
+    }
+  }, [searchTerm]);
+
   return (
     <main className="bg-gray-100 min-h-screen flex flex-col items-center px-4 py-8">
-      {/* Page Title */}
       <h1 className="text-3xl font-bold text-center mb-6">Price Comparison</h1>
 
-      {/* Search Bar and Actions */}
+      {/* Search Section */}
       <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-6 w-full max-w-2xl">
         <input
           type="text"
           placeholder="Keyword or Product Name"
           className="w-full sm:w-2/3 px-4 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
         />
-        <button className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+        <button
+          onClick={handleSearch}
+          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+        >
           Search
         </button>
         <button className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
@@ -26,59 +71,75 @@ export default function Home() {
       {/* Comparison Container */}
       <div className="bg-white rounded-xl shadow-md p-6 w-full max-w-6xl">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Amazon */}
+          {/* Amazon Column */}
           <div>
             <h2 className="text-xl font-semibold text-center mb-4">Amazon</h2>
             <div className="flex flex-col gap-4">
-              {[1000, 1200, 950].map((price, i) => (
-                <div
-                  key={i}
-                  className="border p-4 rounded-lg shadow-sm bg-gray-50"
-                >
-                  <div className="w-full aspect-[2/1] mb-2 flex items-center justify-center rounded-md border-2 border-dashed border-gray-400">
-                    <span className="text-gray-500">Image</span>
+              {loading ? (
+                <div className="text-center text-gray-500">Loading...</div>
+              ) : results.amazon.length === 0 ? (
+                <div className="text-center text-gray-400">No results</div>
+              ) : (
+                results.amazon.map((item, i) => (
+                  <div
+                    key={i}
+                    className="border p-4 rounded-lg shadow-sm bg-gray-50"
+                  >
+                    <div className="w-full aspect-[2/1] mb-2 flex items-center justify-center rounded-md border-2 border-dashed border-gray-400">
+                      {item.image ? (
+                        <img src={item.image} alt={item.title} className="h-full max-h-32 object-contain" />
+                      ) : (
+                        <span className="text-gray-500">Image</span>
+                      )}
+                    </div>
+                    <p>
+                      <strong>Title:</strong> {item.title || 'N/A'}
+                    </p>
+                    <p>
+                      <strong > Product Link: <Link className="text-green-500" href={item.link || ''} passHref={true} target="_blank" >CLICK</Link></strong>
+                    </p>
+                    <p>
+                      <strong>Price:</strong> {item.price ? `${item.price}` : 'N/A'}
+                    </p>
                   </div>
-                  <p>
-                    <strong>Title:</strong> Amazon Product{" "}
-                    {String.fromCharCode(65 + i)}
-                  </p>
-                  <p>
-                    <strong>Description:</strong> Description for Amazon product{" "}
-                    {String.fromCharCode(65 + i)}.
-                  </p>
-                  <p>
-                    <strong>Price:</strong> ₹{price}
-                  </p>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
-          {/* Flipkart */}
+          {/* Flipkart Column */}
           <div>
             <h2 className="text-xl font-semibold text-center mb-4">Flipkart</h2>
             <div className="flex flex-col gap-4">
-              {[970, 1100, 880].map((price, i) => (
-                <div
-                  key={i}
-                  className="border p-4 rounded-lg shadow-sm bg-gray-50"
-                >
-                  <div className="w-full aspect-[2/1] mb-2 flex items-center justify-center rounded-md border-2 border-dashed border-gray-400">
-                    <span className="text-gray-500">Image</span>
+              {loading ? (
+                <div className="text-center text-gray-500">Loading...</div>
+              ) : results.flipkart.length === 0 ? (
+                <div className="text-center text-gray-400">No results</div>
+              ) : (
+                results.flipkart.map((item, i) => (
+                  <div
+                    key={i}
+                    className="border p-4 rounded-lg shadow-sm bg-gray-50"
+                  >
+                    <div className="w-full aspect-[2/1] mb-2 flex items-center justify-center rounded-md border-2 border-dashed border-gray-400">
+                      {item.image ? (
+                        <img src={item.image} alt={item.title} className="h-full max-h-32 object-contain" />
+                      ) : (
+                        <span className="text-gray-500">Image</span>
+                      )}
+                    </div>
+                    <p>
+                      <strong>Title:</strong> {item.title || 'N/A'}
+                    </p>
+                    <p>
+                      <strong > Product Link: <Link className="text-green-500" href={item.link || ''} passHref={true} target="_blank" >CLICK</Link></strong>
+                    </p>
+                    <p>
+                      <strong>Price:</strong> {item.price ? `${item.price}` : 'N/A'}
+                    </p>
                   </div>
-                  <p>
-                    <strong>Title:</strong> Flipkart Product{" "}
-                    {String.fromCharCode(65 + i)}
-                  </p>
-                  <p>
-                    <strong>Description:</strong> Description for Flipkart
-                    product {String.fromCharCode(65 + i)}.
-                  </p>
-                  <p>
-                    <strong>Price:</strong> ₹{price}
-                  </p>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
