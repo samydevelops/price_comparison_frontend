@@ -11,6 +11,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [sortDisabled, setSortDisabled] = useState(true);
+  const [loadingCounter, setLoadingCounter] = useState(0);
 
   const sortResults = (data: any[], order: 'asc' | 'desc') => {
     return [...data].sort((a, b) => {
@@ -63,6 +64,22 @@ export default function Home() {
     }
   }, [searchTerm]);
 
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (loading) {
+      setLoadingCounter(0);
+      timer = setInterval(() => {
+        setLoadingCounter((prev) => prev + 1);
+      }, 1000);
+    } else {
+      setLoadingCounter(0);
+      if (timer) clearInterval(timer);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [loading]);
+
   return (
     <main className="bg-gray-100 min-h-screen flex flex-col items-center px-4 py-8">
       <h1 className="text-3xl font-bold text-center mb-6">Price Comparison</h1>
@@ -109,7 +126,7 @@ export default function Home() {
             <h2 className="text-xl font-semibold text-center mb-4">Amazon</h2>
             <div className="flex flex-col gap-4">
               {loading ? (
-                <div className="text-center text-gray-500">Loading...</div>
+                <div className="text-center text-gray-500">Loading... {loadingCounter}s</div>
               ) : results.amazon.length === 0 ? (
                 <div className="text-center text-gray-400">No results</div>
               ) : (
@@ -145,7 +162,7 @@ export default function Home() {
             <h2 className="text-xl font-semibold text-center mb-4">Flipkart</h2>
             <div className="flex flex-col gap-4">
               {loading ? (
-                <div className="text-center text-gray-500">Loading...</div>
+                <div className="text-center text-gray-500">Loading... {loadingCounter}s</div>
               ) : results.flipkart.length === 0 ? (
                 <div className="text-center text-gray-400">No results</div>
               ) : (
