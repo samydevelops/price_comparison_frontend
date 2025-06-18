@@ -3,15 +3,36 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image'
 import axios from 'axios';
+import { exportResultsToExcel } from './utils/exportToExcel';
 
 export default function Home() {
   const [searchTerm, setSearchTerm] = useState('');
   const [results, setResults] = useState<{ amazon: any[]; flipkart: any[] }>({ amazon: [], flipkart: [] });
   const [loading, setLoading] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortDisabled, setSortDisabled] = useState(true);
+
+  const sortResults = (data: any[], order: 'asc' | 'desc') => {
+    return [...data].sort((a, b) => {
+      const priceA = parseFloat((a.price || '').toString().replace(/[^\d.]/g, '')) || 0;
+      const priceB = parseFloat((b.price || '').toString().replace(/[^\d.]/g, '')) || 0;
+      return order === 'asc' ? priceA - priceB : priceB - priceA;
+    });
+  };
+
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const order = e.target.value as 'asc' | 'desc';
+    setSortOrder(order);
+    setResults(prev => ({
+      amazon: sortResults(prev.amazon, order),
+      flipkart: sortResults(prev.flipkart, order)
+    }));
+  };
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
     setLoading(true);
+    setSortDisabled(true);
     try {
       const res = await axios.post('http://localhost:4000/scrape', {
         keyword: searchTerm,
@@ -21,22 +42,24 @@ export default function Home() {
         }
       });
       setResults({
-        amazon: res.data.amazon_data || [],
-        flipkart: res.data.flipkart_data || [],
+        amazon: sortResults(res.data.amazon_data || [], sortOrder),
+        flipkart: sortResults(res.data.flipkart_data || [], sortOrder),
       });
+      setSortDisabled(false);
     } catch (error) {
       console.error('Error making POST request:', error);
       alert('Error occurred during POST request.');
       setResults({ amazon: [], flipkart: [] });
+      setSortDisabled(true);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    // Optionally, clear results when searchTerm is cleared
     if (!searchTerm) {
       setResults({ amazon: [], flipkart: [] });
+      setSortDisabled(true);
     }
   }, [searchTerm]);
 
@@ -59,10 +82,20 @@ export default function Home() {
         >
           Search
         </button>
-        <button className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+        <button
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 disabled:opacity-50"
+          disabled={results.amazon.length === 0 && results.flipkart.length === 0}
+          onClick={() => exportResultsToExcel(results.amazon, results.flipkart)}
+        >
           Export
         </button>
-        <select className="px-4 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <select
+          id="sortprice"
+          className="px-4 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={sortOrder}
+          onChange={handleSortChange}
+          disabled={sortDisabled}
+        >
           <option value="asc">Price: Low to High</option>
           <option value="desc">Price: High to Low</option>
         </select>
