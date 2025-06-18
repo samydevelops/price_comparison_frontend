@@ -65,7 +65,7 @@ export default function Home() {
   }, [searchTerm]);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setInterval> | undefined;
     if (loading) {
       setLoadingCounter(0);
       timer = setInterval(() => {
@@ -73,7 +73,6 @@ export default function Home() {
       }, 1000);
     } else {
       setLoadingCounter(0);
-      if (timer) clearInterval(timer);
     }
     return () => {
       if (timer) clearInterval(timer);
